@@ -67,7 +67,7 @@ main()
           ((++i));
         elif [ "${1:0:1}" = "-" ]; then :; 
         else
-          1>&2 printf "mv-batch: FATAL ERROR:: cannot access '$1': No such file or directory\n";
+          printf "mv-batch: FATAL ERROR:: cannot access '$1': No such file or directory\n" 1>&2 ;
           exit $FAILURE;
         fi;
         ;;
@@ -82,7 +82,7 @@ main()
         fi;
         ;;
     3)  if [ ${1:0:1} != "-" ]; then
-          1>&2 printf "mv-batch: Note: Extra arg $1 will not be parsed\n";
+          printf "mv-batch: Note: Extra arg $1 will not be parsed\n" 1>&2 ;
         fi;
         ;;
     # Something went terribly wrong
@@ -107,11 +107,11 @@ main()
              shift;
              copydir="$1";
              if [ -z "$copydir" ]; then
-               1>&2 printf "mv-batch: FATAL ERROR: -C Missing required argument copydir";
+               printf "mv-batch: FATAL ERROR: -C Missing required argument copydir" 1>&2;
                exit $FAILURE;
              fi;
             ;;
-        -*)  1>&2 printf "mv-batch: FATAL ERROR: Unkown parameter $1\n";
+        -*)  printf "mv-batch: FATAL ERROR: Unkown parameter $1\n" 1>&2 ;
              _help;
              exit $FAILURE;
              ;;
@@ -122,17 +122,17 @@ main()
   # Error handling
   if [ $from_enc != $to_enc ]; then
     if [ $from_enc -eq $TRUE ]; then
-      1>&2 printf "mv-batch: ERROR:: --from missing a matching --to\n";
+      printf "mv-batch: ERROR:: --from missing a matching --to\n" 1>&2 ;
       exit 256;
     fi;
-    1>&2 printf "mv-batch: ERROR:: --to missing a matching --from\n";
+    printf "mv-batch: ERROR:: --to missing a matching --from\n" 1>&2 ;
     exit $FAILURE;
   fi;
   if [ $i != 3 ] && [ $from_enc -eq $FALSE ]; then
-    1>&2 printf "mv-batch: ERROR:: missing required argument$([ $i -lt 2 ] && 1>&2 printf "s")";
-    [ $i -eq 2 ] && 1>&2 printf "TO-EXT\n";
-    [ $i -eq 1 ] && 1>&2 printf "FROM-EXT, TO-EXT\n";
-    [ $i -eq 0 ] && 1>&2 printf '{all}\n';
+    printf "mv-batch: ERROR:: missing required argument$([ $i -lt 2 ] && printf "s") " 1>&2 ;
+    [ $i -eq 2 ] && printf "TO-EXT\n" 1>&2 ;
+    [ $i -eq 1 ] && printf "FROM-EXT, TO-EXT\n" 1>&2 ;
+    [ $i -eq 0 ] && printf '{all}\n' 1>&2 ;
     exit $FAILURE;
   fi;
 
@@ -167,18 +167,20 @@ _help()
 
 no_list_func()
 {
+  FILES=();
   # This way we can take arbitrary filenames without trouble.
-  IFS=' ' read -ra FILES <<< "$(find $DIR -maxdepth 1 -type f -name "*.$1" -print0 | xargs -0 printf "%s " )";
+  readarray -t -O "${#FILES[@]}" FILES < <(find $DIR -maxdepth 1 -type f -name "*.$1");
   if [ ${#FILES[@]} -eq 0 ]; then
-    1>&2 printf "mv-batch: ERROR:: no files with file exstension $1 in $DIR\n";
+    printf "mv-batch: ERROR:: no files with file exstension $1 in $DIR\n" 1>&2 ;
     exit $FAILURE;
   fi;
   [ -n "$copydir" ] && DIR=$copydir && { [ ! -e $DIR ] && mkdir $DIR; };
+  IFS='';
   for x in ${FILES[@]}; do
     n=${x##*/}; # remove prefix
     b=${n%.*};  # remove suffix
     # $CTRL $VERB $x $DIR/${b}.$2;
-    $VERB $x $DIR/${b}.$2;
+    $VERB "$x" "$DIR/${b}.$2";
   done;
 };
 
