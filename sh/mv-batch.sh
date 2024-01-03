@@ -169,7 +169,7 @@ no_list_func()
 {
   FILES=();
   # This way we can take arbitrary filenames without trouble.
-  readarray -t -O "${#FILES[@]}" FILES < <(find $DIR -maxdepth 1 -type f -name "*.$1");
+  readarray -t FILES < <(find $DIR -maxdepth 1 -type f -name "*.$1");
   if [ ${#FILES[@]} -eq 0 ]; then
     printf "mv-batch: ERROR:: no files with file exstension $1 in $DIR\n" 1>&2 ;
     exit $FAILURE;
