@@ -86,7 +86,8 @@ main()
         fi;
         ;;
     # Something went terribly wrong
-    *)  exit 99;
+    *)  printf "FATAL ERROR:: error code 99" 1>&2;
+        exit 99;
     esac
 
     nosuffix=${1%=*}
@@ -118,7 +119,7 @@ main()
     esac
     shift;
   done;
-  
+
   # Error handling
   if [ $from_enc != $to_enc ]; then
     if [ $from_enc -eq $TRUE ]; then
@@ -135,6 +136,10 @@ main()
     [ $i -eq 0 ] && printf '{all}\n' 1>&2 ;
     exit $FAILURE;
   fi;
+  if [ $i != 1 ] && [ $from_enc -eq $to_enc ]; then
+    printf "mv-batch: ERROR:: missing required argument DIR\n";
+    exit $FAILURE
+  fi;
 
   if [ $from_enc -eq $FALSE ]; then
     no_list_func $FROM $TO
@@ -145,48 +150,68 @@ main()
 
 _help()
 {
-  printf 'mv-batch: batch move files in a directory to different file extensions\n\n'
-  printf '  USAGE::\n\n'
-  printf '    mv-batch DIR [--ctrl=version_control] [-C copydir] FROM-EXT TO-EXT\n'
-  printf '    mv-batch DIR [--ctrl=version_control] --from=ext1[,ext2[,...]] --to=ext1[,ext2[,...]] [-C copydir]\n\n'
-  printf '  COMMANDS::\n\n'
-  printf '    -ctrl (NOT IN USE/ NOT IMPLEMENTED)\n'
-  printf '    Use the specified version control system when moving the files\n\n'
-  printf '    -from\n'
-  printf '    A comma-separated list of exts to change from. No period (.) is needed.\n'
-  printf '    Each argument passed will be matched with the corresponding argument of --to.\n\n'
-  printf '    -to\n'
-  printf '    A comma-separated list of exts to change to. No period (.) is needed.\n'
-  printf '    Each argument passed will be matched with the corresponding argument of --from.\n'
-  printf '  OPTIONS::\n\n'
-  printf '    -C copydir\n'
-  printf '    Create copies of files with the new ext in copydir instead of renaming them\n\n'
-  printf '    --help\n'
-  printf '    Display this information.\n'
+  cat <<- 'END_OF_HELP'
+	mv-batch: batch move files in a directory to different file extensions\n\n'
+	  USAGE::\n\n'
+	    mv-batch DIR [--ctrl=version_control] [-C copydir] FROM-EXT TO-EXT\n'
+	    mv-batch DIR [--ctrl=version_control] --from=ext1[,ext2[,...]] --to=ext1[,ext2[,...]] [-C copydir]\n\n'
+	  COMMANDS::\n\n'
+	    -ctrl (NOT IN USE/ NOT IMPLEMENTED)\n'
+	    Use the specified version control system when moving the files\n\n'
+	    -from\n'
+	    A comma-separated list of exts to change from. No period (.) is needed.\n'
+	    Each argument passed will be matched with the corresponding argument of --to.\n\n'
+	    -to\n'
+	    A comma-separated list of exts to change to. No period (.) is needed.\n'
+	    Each argument passed will be matched with the corresponding argument of --from.\n'
+	  OPTIONS::\n\n'
+	    -C copydir\n'
+	    Create copies of files with the new ext in copydir instead of renaming them\n\n'
+	    --help\n'
+	    Display this information.\n'
+	END_OF_HELP
 }
 
 no_list_func()
 {
-  FILES=();
   # This way we can take arbitrary filenames without trouble.
   readarray -t FILES < <(find $DIR -maxdepth 1 -type f -name "*.$1");
+
+  # If -from='', change files with no file ext
+  # (*. & (!*.*)) to the ext specified by -to
+  if [ ${#FROM_ARGS[@]} -eq 0 ] && [ $from_enc != $FALSE ] ; then
+    readarray -t FILES < <(find $DIR -maxdepth 1 -type f -name "*.")
+    readarray -t -O ${#FILES[@]} FILES < <(find $DIR -type f | grep -v "\.")
+    FROM=''
+    TO=$1
+  fi;
+
   if [ ${#FILES[@]} -eq 0 ]; then
-    printf "mv-batch: ERROR:: no files with file exstension $1 in $DIR\n" 1>&2 ;
+    printf "mv-batch: ERROR:: no files with file exstension {$FROM} in $DIR\n" 1>&2;
     exit $FAILURE;
   fi;
-  [ -n "$copydir" ] && DIR=$copydir && { [ ! -e $DIR ] && mkdir $DIR; };
+
+  [ -n "$copydir" ] && DIR=$copydir && [ ! -e $DIR ] && mkdir $DIR; 
+  
   IFS='';
   for x in ${FILES[@]}; do
-    n=${x##*/}; # remove prefix
-    b=${n%.*};  # remove suffix
-    # $CTRL $VERB $x $DIR/${b}.$2;
-    $VERB "$x" "$DIR/${b}.$2";
+    # remove prefix
+    n=${x##*/};
+
+    # remove suffix
+    b=${n%.*};
+
+    PERIOD='.'
+    [ -z $TO ] && PERIOD=''; 
+    # $CTRL $VERB $x $DIR/${b}${PERIOD}${TO};
+    $VERB "$x" "$DIR/${b}${PERIOD}$TO";
   done;
 };
 
 list_func()
 {
   len=${#FROM_ARGS[@]};
+  [ ${#FROM_ARGS[@]} -eq 0 ] && len=1;
   for ((i=0; i<len; ++i)) do
     # Invoke a subshell so that remaining exts
     # are still parsed even if one causes an error
