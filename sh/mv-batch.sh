@@ -37,7 +37,7 @@ COPYRIGHT
         Copyright © 2024 BloatedMonke
         License GPLv3: <https://gnu.org/licenses/gpl.html>.
         This is free software: you are free to change and redistribute it so long as
-        this copyright notice is retained.
+        the above copyright notice is retained.
 FUGA
 
 SUCCESS=0
